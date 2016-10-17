@@ -1,0 +1,45 @@
+#btnPoint {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+#btnLine {
+    position: absolute;
+    top: 10px;
+    left: 60px;
+}
+
+#btnArea {
+    position: absolute;
+    top: 10px;
+    left: 110px;
+}
+
+#btnEdit {
+    position: absolute;
+    top: 10px;
+    left: 160px;
+}
+
+#btnDelete {
+    position: absolute;
+    top: 10px;
+    left: 210px;
+}
+
+#btnZoomIn {
+    position: absolute;
+    top: 10px;
+    left: 310px;
+}
+#btnZoomOut {
+    position: absolute;
+    top: 10px;
+    left: 360px;
+}
+
+.btn-active {
+    background-color: #38adc7 !important;
+}
+
