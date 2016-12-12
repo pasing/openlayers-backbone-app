@@ -1,23 +1,29 @@
+var projection = new ol.proj.Projection({
+    code: 'EPSG:3857',
+    units: 'm',
+    axisOrientation: 'neu'
+});
+
 var formatWFS = new ol.format.WFS();
 
 var formatGML = new ol.format.GML({
-    featureNS: 'https://gsx.geolytix.net/geoserver/geolytix_wfs',
+    featureNS: 'http://geocatalogue.databenc.it/geoserver/chis_test',
     featureType: 'wfs_geom',
     srsName: 'EPSG:3857'
 });
 
 var xs = new XMLSerializer();
 
-var sourceWFS = new ol.source.Vector({
+/*var sourceWFS = new ol.source.Vector({
     loader: function (extent) {
-        $.ajax('https://gsx.geolytix.net/geoserver/geolytix_wfs/ows', {
+        $.ajax('http://geocatalogue.databenc.it/geoserver/chis_test/ows', {
             type: 'GET',
             data: {
                 service: 'WFS',
-                version: '1.1.0',
+                version: '1.0.0',
                 request: 'GetFeature',
-                typename: 'wfs_geom',
-                srsname: 'EPSG:3857',
+                typeName: 'chis_test:wfs_geom',
+                srsName: 'EPSG:3857',
                 //cql_filter: "property='Value'",
                 //cql_filter: "BBOX(geometry," + extent.join(',') + ")",
                 bbox: extent.join(',') + ',EPSG:3857'
@@ -26,9 +32,20 @@ var sourceWFS = new ol.source.Vector({
             sourceWFS.addFeatures(formatWFS.readFeatures(response));
         });
     },
-    //strategy: ol.loadingstrategy.tile(ol.tilegrid.createXYZ()),
     strategy: ol.loadingstrategy.bbox,
     projection: 'EPSG:3857'
+});*/
+
+var sourceWFS = new ol.source.Vector({
+    format: new ol.format.GeoJSON(),
+    url: function(extent) {
+        return 'http://geocatalogue.databenc.it/geoserver/chis_test/ows?service=WFS&' +
+            'version=1.1.0&request=GetFeature&typename=chis_test:wfs_geom&' +
+            'outputFormat=application/json&srsname=EPSG:3857&' +
+            'bbox=' + extent.join(',') + ',EPSG:3857';
+    },
+    strategy: ol.loadingstrategy.bbox,
+    projection: projection
 });
 
 var layerWFS = new ol.layer.Vector({
@@ -53,6 +70,14 @@ var interactionSnap = new ol.interaction.Snap({
     source: layerWFS.getSource()
 });
 
+var raster = new ol.layer.Tile({
+    source: new ol.source.OSM({
+        url: 'https://cartodb-basemaps-{a-d}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+        opaque: false,
+        attributions: []
+    })
+});
+
 var map = new ol.Map({
     target: 'map',
     controls: [],
@@ -62,18 +87,14 @@ var map = new ol.Map({
         new ol.interaction.DragPan()
     ],
     layers: [
-        new ol.layer.Tile({
-            source: new ol.source.OSM({
-                url: 'https://cartodb-basemaps-{a-d}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
-                opaque: false,
-                attributions: []
-            })
-        }),
+        raster,
         layerWFS
     ],
     view: new ol.View({
-        center: ol.proj.fromLonLat([-1.7, 53.2]),
-        zoom: 6
+        projection: projection,
+        center: ol.proj.transform([14.80, 40.80], 'EPSG:4326', 'EPSG:3857'),
+        maxZoom: 19,
+        zoom: 9
     })
 });
 
@@ -93,7 +114,7 @@ var transactWFS = function (mode, f) {
             break;
     }
     var payload = xs.serializeToString(node);
-    $.ajax('https://gsx.geolytix.net/geoserver/geolytix_wfs/ows', {
+    $.ajax('http://geocatalogue.databenc.it/geoserver/chis_test/ows', {
         type: 'POST',
         dataType: 'xml',
         processData: false,
