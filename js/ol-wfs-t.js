@@ -1,64 +1,88 @@
-var projection = new ol.proj.Projection({
+const projection = new ol.proj.Projection({
     code: 'EPSG:3857',
     units: 'm',
     axisOrientation: 'neu'
 });
 
-var formatWFS = new ol.format.WFS();
+const formatWFS = new ol.format.WFS();
 
-var formatGML = new ol.format.GML({
-    featureNS: 'http://geocatalogue.databenc.it/geoserver/chis_test',
-    featureType: 'wfs_geom',
+const formatGML = new ol.format.GML({
+    featureNS: 'http://127.0.0.1:8080/geoserver/geodata',
+    featureType: 'stazioni_campania',
     srsName: 'EPSG:3857'
 });
 
-var xs = new XMLSerializer();
+let xs = new XMLSerializer();
 
-/*var sourceWFS = new ol.source.Vector({
-    loader: function (extent) {
-        $.ajax('http://geocatalogue.databenc.it/geoserver/chis_test/ows', {
-            type: 'GET',
-            data: {
-                service: 'WFS',
-                version: '1.0.0',
-                request: 'GetFeature',
-                typeName: 'chis_test:wfs_geom',
-                srsName: 'EPSG:3857',
-                //cql_filter: "property='Value'",
-                //cql_filter: "BBOX(geometry," + extent.join(',') + ")",
-                bbox: extent.join(',') + ',EPSG:3857'
-            }
-        }).done(function (response) {
-            sourceWFS.addFeatures(formatWFS.readFeatures(response));
-        });
-    },
-    strategy: ol.loadingstrategy.bbox,
-    projection: 'EPSG:3857'
-});*/
+const username = 'admin';
+const password = 'geoserver';
 
-var sourceWFS = new ol.source.Vector({
+function make_base_auth(user, password) {
+    let tok = user + ':' + password;
+    let hash = btoa(tok);
+    return 'Basic ' + hash;
+}
+
+const loaderWFS = function(extent, resolution, projection, success, failure) {
+    let proj = projection.getCode();
+    console.log('epsg code > ', proj)
+    let url = 'http://127.0.0.1:8080/geoserver/geodata/wfs?service=WFS&' +
+        'version=1.1.0&request=GetFeature&typename=geodata:stazioni_campania&' +
+        'outputFormat=application/json&srsname=' + proj + '&' +
+        'bbox=' + extent.join(',') + ',' + proj;
+    let xhr = new XMLHttpRequest();
+    xhr.open('GET', url);
+
+    xhr.setRequestHeader('Authorization', make_base_auth(username, password));
+    console.log('xhr > ', xhr, 'basic > ', make_base_auth(username, password))
+    let onError = function() {
+        sourceWFS.removeLoadedExtent(extent);
+        failure();
+    }
+    xhr.onerror = onError;
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            console.log('response 200 > ', xhr.responseText)
+            let features = sourceWFS.getFormat().readFeatures(xhr.responseText);
+            sourceWFS.addFeatures(features);
+            success(features);
+        } else {
+            console.log('response ko > ', xhr.responseText)
+            onError();
+        }
+    }
+    xhr.send();
+};
+
+const sourceWFS = new ol.source.Vector({
     format: new ol.format.GeoJSON(),
-    url: function(extent) {
-        return 'http://geocatalogue.databenc.it/geoserver/chis_test/ows?service=WFS&' +
-            'version=1.1.0&request=GetFeature&typename=chis_test:wfs_geom&' +
-            'outputFormat=application/json&srsname=EPSG:3857&' +
-            'bbox=' + extent.join(',') + ',EPSG:3857';
-    },
-    strategy: ol.loadingstrategy.bbox,
-    projection: projection
+    loader: loaderWFS,
+    strategy: ol.loadingstrategy.bbox
 });
 
-var layerWFS = new ol.layer.Vector({
-    source: sourceWFS
+const layerWFS = new ol.layer.Vector({
+    source: sourceWFS,
+    style: new ol.style.Style({
+        image: new ol.style.Circle({
+            fill: new ol.style.Fill({
+                color: 'rgba(0, 0, 0, 0.2)',
+            }),
+            stoke: new ol.style.Stroke({
+                color: 'rgba(0, 0, 0, 1.0)',
+                width: 2
+            }),
+            radius: 5
+        })
+    })
 });
 
-var interaction;
+let interaction;
 
-var interactionSelectPointerMove = new ol.interaction.Select({
+let interactionSelectPointerMove = new ol.interaction.Select({
     condition: ol.events.condition.pointerMove
 });
 
-var interactionSelect = new ol.interaction.Select({
+let interactionSelect = new ol.interaction.Select({
     style: new ol.style.Style({
         stroke: new ol.style.Stroke({
             color: '#FF2828'
@@ -66,11 +90,11 @@ var interactionSelect = new ol.interaction.Select({
     })
 });
 
-var interactionSnap = new ol.interaction.Snap({
+let interactionSnap = new ol.interaction.Snap({
     source: layerWFS.getSource()
 });
 
-var raster = new ol.layer.Tile({
+const raster = new ol.layer.Tile({
     source: new ol.source.OSM({
         url: 'https://cartodb-basemaps-{a-d}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
         opaque: false,
@@ -78,7 +102,7 @@ var raster = new ol.layer.Tile({
     })
 });
 
-var map = new ol.Map({
+const map = new ol.Map({
     target: 'map',
     controls: [],
     interactions: [
@@ -99,9 +123,9 @@ var map = new ol.Map({
 });
 
 //wfs-t
-var dirty = {};
-var transactWFS = function (mode, f) {
-    var node;
+let dirty = {};
+let transactWFS = function (mode, f) {
+    let node;
     switch (mode) {
         case 'insert':
             node = formatWFS.writeTransaction([f], null, null, formatGML);
@@ -113,14 +137,14 @@ var transactWFS = function (mode, f) {
             node = formatWFS.writeTransaction(null, null, [f], formatGML);
             break;
     }
-    var payload = xs.serializeToString(node);
-    $.ajax('http://geocatalogue.databenc.it/geoserver/chis_test/ows', {
+    let payload = xs.serializeToString(node);
+    $.ajax('http://127.0.0.1:8080/geoserver/geodata/ows', {
         type: 'POST',
         dataType: 'xml',
         processData: false,
         contentType: 'text/xml',
         data: payload
-    }).done(function() {
+    }).done(function () {
         sourceWFS.clear();
     });
 };
@@ -208,14 +232,14 @@ $('button').click(function () {
     }
 });
 
-$('#btnZoomIn').on('click', function() {
-    var view = map.getView();
-    var newResolution = view.constrainResolution(view.getResolution(), 1);
+$('#btnZoomIn').on('click', function () {
+    let view = map.getView();
+    let newResolution = view.constrainResolution(view.getResolution(), 1);
     view.setResolution(newResolution);
 });
 
-$('#btnZoomOut').on('click', function() {
-    var view = map.getView();
-    var newResolution = view.constrainResolution(view.getResolution(), -1);
+$('#btnZoomOut').on('click', function () {
+    let view = map.getView();
+    let newResolution = view.constrainResolution(view.getResolution(), -1);
     view.setResolution(newResolution);
 });
