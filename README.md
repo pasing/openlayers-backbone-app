@@ -1,6 +1,6 @@
-# OpenLayers 3 Example
+# OpenLayers Example
 
-<code>ol3-wfs-t.html</code> Test WFS-T service. 
+<code>ol-wfs-t.html</code> Test WFS-T service. 
 Insert, edit and delete feature from PostGIS Layer trough Geoserver
 
-[API doc](https://openlayers.org/en/v3.20.1/apidoc/?stableonly=true)
+[API doc](https://openlayers.org/en/latest/apidoc/?stableonly=true)
