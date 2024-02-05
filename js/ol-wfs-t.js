@@ -233,13 +233,15 @@ $('button').click(function () {
 });
 
 $('#btnZoomIn').on('click', function () {
-    let view = map.getView();
-    let newResolution = view.constrainResolution(view.getResolution(), 1);
-    view.setResolution(newResolution);
+    map.getView().animate({
+        zoom: map.getView().getZoom() + 1,
+        duration: 250
+    })
 });
 
 $('#btnZoomOut').on('click', function () {
-    let view = map.getView();
-    let newResolution = view.constrainResolution(view.getResolution(), -1);
-    view.setResolution(newResolution);
+    map.getView().animate({
+        zoom: map.getView().getZoom() - 1,
+        duration: 250
+    })
 });
